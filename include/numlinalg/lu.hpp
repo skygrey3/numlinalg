@@ -6,6 +6,9 @@
 
 #include "numlinalg/matrix.hpp"
 
+using std::size_t;
+using std::vector;
+
 namespace nla {
 
 // LU factorization with partial pivoting: P A = L U, where L is unit lower
@@ -14,13 +17,13 @@ namespace nla {
 struct LU {
     Matrix L;
     Matrix U;
-    std::vector<std::size_t> perm;
+    vector<size_t> perm;
 };
 
 LU lu_decompose(Matrix a);
 
 // Solve A x = b given a factorization from lu_decompose.
-std::vector<double> lu_solve(const LU& lu, const std::vector<double>& b);
+vector<double> lu_solve(const LU& lu, const vector<double>& b);
 
 }  // namespace nla
 

@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <vector>
 
+using namespace std;
+
 using nla::LU;
 using nla::Matrix;
 
@@ -13,32 +15,32 @@ static int failures = 0;
 
 static void check(bool ok, const char* what) {
     if (!ok) {
-        std::printf("FAIL: %s\n", what);
+        printf("FAIL: %s\n", what);
         ++failures;
     }
 }
 
 // Largest absolute component of A x - b.
-static double residual(const Matrix& a, const std::vector<double>& x,
-                       const std::vector<double>& b) {
+static double residual(const Matrix& a, const vector<double>& x,
+                       const vector<double>& b) {
     double worst = 0.0;
-    for (std::size_t i = 0; i < a.rows(); ++i) {
+    for (size_t i = 0; i < a.rows(); ++i) {
         double s = b[i];
-        for (std::size_t j = 0; j < a.cols(); ++j) {
+        for (size_t j = 0; j < a.cols(); ++j) {
             s -= a(i, j) * x[j];
         }
-        worst = std::max(worst, std::abs(s));
+        worst = max(worst, abs(s));
     }
     return worst;
 }
 
 static void check_factorization(const Matrix& a, const LU& lu, const char* what) {
-    const std::size_t n = a.rows();
+    const size_t n = a.rows();
     bool ok = true;
-    for (std::size_t i = 0; i < n && ok; ++i) {
-        for (std::size_t j = 0; j < n; ++j) {
+    for (size_t i = 0; i < n && ok; ++i) {
+        for (size_t j = 0; j < n; ++j) {
             double s = 0.0;
-            for (std::size_t k = 0; k < n; ++k) {
+            for (size_t k = 0; k < n; ++k) {
                 s += lu.L(i, k) * lu.U(k, j);
             }
             if (!nla::approx_equal(s, a(lu.perm[i], j))) {
@@ -74,7 +76,7 @@ int main() {
     a(1, 0) = 1; a(1, 1) = 1;
     LU lu = nla::lu_decompose(a);
     check_factorization(a, lu, "P A = L U for the swap case");
-    std::vector<double> x = nla::lu_solve(lu, {3.0, 4.0});
+    vector<double> x = nla::lu_solve(lu, {3.0, 4.0});
     check(nla::approx_equal(x[0], 1.0) && nla::approx_equal(x[1], 3.0),
           "swap case solution");
 
@@ -85,7 +87,7 @@ int main() {
     m(2, 0) = 8; m(2, 1) = 7; m(2, 2) = 9;
     LU mlu = nla::lu_decompose(m);
     check_factorization(m, mlu, "P A = L U for the 3x3 system");
-    std::vector<double> mx = nla::lu_solve(mlu, {7.0, 19.0, 49.0});
+    vector<double> mx = nla::lu_solve(mlu, {7.0, 19.0, 49.0});
     check(nla::approx_equal(mx[0], 1.0) && nla::approx_equal(mx[1], 2.0) &&
               nla::approx_equal(mx[2], 3.0),
           "3x3 solution");
@@ -93,32 +95,32 @@ int main() {
     // 5x5 Hilbert matrix: badly conditioned, so the residual bound is loose
     // on purpose. A good check that partial pivoting keeps the backward error
     // small even when the solution itself is sensitive.
-    const std::size_t n = 5;
+    const size_t n = 5;
     Matrix h(n, n);
-    for (std::size_t i = 0; i < n; ++i) {
-        for (std::size_t j = 0; j < n; ++j) {
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
             h(i, j) = 1.0 / static_cast<double>(i + j + 1);
         }
     }
-    std::vector<double> hx_exact(n), hb(n);
-    for (std::size_t i = 0; i < n; ++i) {
+    vector<double> hx_exact(n), hb(n);
+    for (size_t i = 0; i < n; ++i) {
         hx_exact[i] = static_cast<double>(i + 1);
     }
-    for (std::size_t i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         double s = 0.0;
-        for (std::size_t j = 0; j < n; ++j) {
+        for (size_t j = 0; j < n; ++j) {
             s += h(i, j) * hx_exact[j];
         }
         hb[i] = s;
     }
     LU hlu = nla::lu_decompose(h);
-    std::vector<double> hx = nla::lu_solve(hlu, hb);
+    vector<double> hx = nla::lu_solve(hlu, hb);
     check(residual(h, hx, hb) < 1e-8, "hilbert residual");
 
     if (failures == 0) {
-        std::printf("all tests passed\n");
+        printf("all tests passed\n");
         return 0;
     }
-    std::printf("%d test(s) failed\n", failures);
+    printf("%d test(s) failed\n", failures);
     return 1;
 }
