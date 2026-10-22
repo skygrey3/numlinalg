@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
+#include <stdexcept>
 #include <vector>
 
 using namespace std;
@@ -68,6 +69,45 @@ int main() {
     check(nla::approx_equal(p.transpose()(2, 0), 3.0) &&
               nla::approx_equal(p.transpose()(0, 1), 4.0),
           "transpose");
+
+    // Dimension and index errors throw in every build, not only under assert.
+    {
+        Matrix a2(2, 2), b3(3, 3);
+        bool threw = false;
+        try {
+            a2 += b3;
+        } catch (const invalid_argument&) {
+            threw = true;
+        }
+        check(threw, "operator+= rejects a dimension mismatch");
+
+        threw = false;
+        try {
+            (void)(a2 * b3);
+        } catch (const invalid_argument&) {
+            threw = true;
+        }
+        check(threw, "operator* rejects a dimension mismatch");
+    }
+    {
+        Matrix a2(2, 2);
+        bool threw = false;
+        try {
+            (void)a2(2, 0);
+        } catch (const out_of_range&) {
+            threw = true;
+        }
+        check(threw, "operator() rejects an out-of-range row");
+
+        threw = false;
+        const Matrix& ca = a2;
+        try {
+            (void)ca(0, 2);
+        } catch (const out_of_range&) {
+            threw = true;
+        }
+        check(threw, "const operator() rejects an out-of-range column");
+    }
 
     // A matrix whose elimination needs a row swap: solving without pivoting
     // would divide by zero on the first step.

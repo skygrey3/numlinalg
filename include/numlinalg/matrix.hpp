@@ -2,13 +2,15 @@
 #define NUMLINALG_MATRIX_HPP
 
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <stdexcept>
 #include <vector>
 
 using std::abs;
+using std::invalid_argument;
 using std::max;
+using std::out_of_range;
 using std::size_t;
 using std::vector;
 
@@ -30,13 +32,29 @@ public:
         return I;
     }
 
+    // Checked access: throws std::out_of_range on an invalid index. The checks
+    // are always compiled in, so a release build cannot silently corrupt
+    // memory on a bad index.
     double& operator()(size_t i, size_t j) {
-        assert(i < rows_ && j < cols_);
+        if (i >= rows_ || j >= cols_) {
+            throw out_of_range("matrix index out of range");
+        }
         return data_[i * cols_ + j];
     }
 
     double operator()(size_t i, size_t j) const {
-        assert(i < rows_ && j < cols_);
+        if (i >= rows_ || j >= cols_) {
+            throw out_of_range("matrix index out of range");
+        }
+        return data_[i * cols_ + j];
+    }
+
+    // Unchecked access for hot loops whose indices are already known valid.
+    // Callers are responsible for the bounds; this is the escape hatch for
+    // code where the per-access check measurably matters.
+    double& unchecked(size_t i, size_t j) { return data_[i * cols_ + j]; }
+
+    double unchecked(size_t i, size_t j) const {
         return data_[i * cols_ + j];
     }
 
@@ -54,7 +72,9 @@ public:
     }
 
     Matrix& operator+=(const Matrix& other) {
-        assert(rows_ == other.rows_ && cols_ == other.cols_);
+        if (rows_ != other.rows_ || cols_ != other.cols_) {
+            throw invalid_argument("matrix dimensions do not match for +=");
+        }
         for (size_t k = 0; k < data_.size(); ++k) {
             data_[k] += other.data_[k];
         }
@@ -74,13 +94,15 @@ inline Matrix operator+(const Matrix& a, const Matrix& b) {
 }
 
 inline Matrix operator*(const Matrix& a, const Matrix& b) {
-    assert(a.cols() == b.rows());
+    if (a.cols() != b.rows()) {
+        throw invalid_argument("matrix dimensions do not match for *");
+    }
     Matrix c(a.rows(), b.cols());
     for (size_t i = 0; i < a.rows(); ++i) {
         for (size_t k = 0; k < a.cols(); ++k) {
-            const double aik = a(i, k);
+            const double aik = a.unchecked(i, k);
             for (size_t j = 0; j < b.cols(); ++j) {
-                c(i, j) += aik * b(k, j);
+                c.unchecked(i, j) += aik * b.unchecked(k, j);
             }
         }
     }
