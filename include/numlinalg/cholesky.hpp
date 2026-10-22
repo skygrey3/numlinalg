@@ -4,23 +4,29 @@
 #include <cstddef>
 #include <vector>
 
+#include "numlinalg/matrix.hpp"
+
 using std::size_t;
 using std::vector;
 
 namespace nla {
 
-class Matrix;
-
 // Cholesky factorization A = L L^T for symmetric positive definite A.
-// Throws std::invalid_argument if A is not square, or std::runtime_error
-// if A is not positive definite (a non-positive pivot is encountered).
-// Returns L (lower triangular, size n x n); A is left unmodified.
-vector<double> cholesky(const Matrix& a);
+// L is lower triangular with a positive diagonal; A is left unmodified.
+//
+// Throws std::invalid_argument if A is not square and non-empty, or if A is
+// not symmetric within a relative tolerance of 1e-12 (so round-off from the
+// caller does not trip the check). Throws std::runtime_error if A is not
+// positive definite (a non-positive pivot is encountered).
+struct Cholesky {
+    Matrix L;
+};
 
-// Solve A x = b given the Cholesky factor L (as returned by cholesky()):
-// forward substitution with L, then back substitution with L^T.
-vector<double> cholesky_solve(const vector<double>& l,
-                              const vector<double>& b);
+Cholesky cholesky(const Matrix& a);
+
+// Solve A x = b given the factorization from cholesky(): forward
+// substitution with L, then back substitution with L^T.
+vector<double> cholesky_solve(const Cholesky& chol, const vector<double>& b);
 
 }  // namespace nla
 
