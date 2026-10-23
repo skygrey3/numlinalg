@@ -117,7 +117,34 @@ int main() {
               "trace is preserved");
     }
 
-    // 6. Non-square input is rejected.
+    // 6. Scale invariance: multiplying A by 1e160 multiplies every eigenvalue
+    // by 1e160. An absolute convergence threshold on the off-diagonal sum
+    // would stop before the off-diagonal part is negligible, and squaring the
+    // Frobenius norm would overflow; the relative criterion and the internal
+    // rescaling handle both.
+    {
+        Matrix base(2, 2);
+        base(0, 0) = 4; base(0, 1) = 1;
+        base(1, 0) = 1; base(1, 1) = 3;
+        const double scale = 1e160;
+        Matrix a(2, 2);
+        for (size_t i = 0; i < 2; ++i) {
+            for (size_t j = 0; j < 2; ++j) {
+                a(i, j) = scale * base(i, j);
+            }
+        }
+        const vector<double> eig = nla::jacobi_eigenvalues(a);
+        const double r = sqrt(1.25);
+        const double lo = scale * (3.5 - r);
+        const double hi = scale * (3.5 + r);
+        const bool ok = (fabs(eig[0] - lo) <= 1e-9 * hi &&
+                         fabs(eig[1] - hi) <= 1e-9 * hi) ||
+                        (fabs(eig[0] - hi) <= 1e-9 * hi &&
+                         fabs(eig[1] - lo) <= 1e-9 * hi);
+        check(ok, "eigenvalues scale linearly with the matrix");
+    }
+
+    // 7. Non-square input is rejected.
     {
         Matrix bad(2, 3);
         bool threw = false;
