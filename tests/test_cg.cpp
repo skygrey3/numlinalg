@@ -9,6 +9,7 @@
 
 using namespace std;
 
+using nla::CGResult;
 using nla::Matrix;
 using nla::SparseMatrix;
 
@@ -86,8 +87,11 @@ int main() {
     }
 
     vector<double> x;
-    const size_t used = nla::conjugate_gradient(a, b, x, 1e-12, 100);
-    check(used <= n, "CG terminates within n iterations");
+    const CGResult res = nla::conjugate_gradient(a, b, x, 1e-12, 100);
+    check(res.converged, "CG reports convergence on the Poisson system");
+    check(res.iterations <= n, "CG terminates within n iterations");
+    check(res.residual <= 1e-12 * sqrt(n) * 2.0,
+          "reported residual matches the tolerance");
 
     bool converged = true;
     double max_err = 0.0;
@@ -102,7 +106,29 @@ int main() {
         }
     }
     check(converged, "CG recovers the exact solution to 1e-8");
-    printf("poisson 12x12: %zu iterations, max error %.2e\n", used, max_err);
+    printf("poisson 12x12: %zu iterations, max error %.2e\n", res.iterations,
+           max_err);
+
+    // A budget of one iteration cannot converge; the result must say so
+    // instead of returning a bare iteration count that looks like success.
+    {
+        vector<double> x1;
+        const CGResult short_run = nla::conjugate_gradient(a, b, x1, 1e-12, 1);
+        check(!short_run.converged, "CG flags a budget that ran out");
+        check(short_run.iterations == 1, "CG reports the iterations it used");
+        check(short_run.residual > 1e-12 * sqrt(n) * 2.0,
+              "CG reports the residual of an unconverged run");
+    }
+
+    // Warm start: handing CG the exact solution costs zero iterations, and
+    // the reported residual is zero.
+    {
+        vector<double> xwarm = x_exact;
+        const CGResult warm = nla::conjugate_gradient(a, b, xwarm, 1e-12, 100);
+        check(warm.converged, "warm start from the exact solution converges");
+        check(warm.iterations == 0, "warm start from the exact solution uses no iterations");
+        check(warm.residual == 0.0, "warm start reports a zero residual");
+    }
 
     // Also solves a small non-Poisson SPD system.
     Matrix s(3, 3);
@@ -118,7 +144,8 @@ int main() {
         }
     }
     vector<double> sx;
-    (void)nla::conjugate_gradient(sp, sb, sx, 1e-12, 50);
+    const CGResult small = nla::conjugate_gradient(sp, sb, sx, 1e-12, 50);
+    check(small.converged, "CG converges on a small SPD system");
     check(fabs(sx[0] - 1.0) < 1e-9 && fabs(sx[1] - 2.0) < 1e-9 &&
               fabs(sx[2] - 3.0) < 1e-9,
           "CG solves a small SPD system exactly");

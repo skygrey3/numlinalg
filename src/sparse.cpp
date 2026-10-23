@@ -60,11 +60,12 @@ double SparseMatrix::at(size_t i, size_t j) const {
     return 0.0;
 }
 
-vector<double> SparseMatrix::multiply(const vector<double>& x) const {
+void SparseMatrix::multiply_into(const vector<double>& x,
+                                 vector<double>& y) const {
     if (x.size() != cols_) {
         throw invalid_argument("vector length does not match matrix columns");
     }
-    vector<double> y(rows_, 0.0);
+    y.assign(rows_, 0.0);
     for (size_t i = 0; i < rows_; ++i) {
         double s = 0.0;
         for (size_t k = row_ptr_[i]; k < row_ptr_[i + 1]; ++k) {
@@ -72,6 +73,11 @@ vector<double> SparseMatrix::multiply(const vector<double>& x) const {
         }
         y[i] = s;
     }
+}
+
+vector<double> SparseMatrix::multiply(const vector<double>& x) const {
+    vector<double> y;
+    multiply_into(x, y);
     return y;
 }
 
